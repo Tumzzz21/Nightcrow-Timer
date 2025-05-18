@@ -2,12 +2,105 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>My GitHub Page</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Night Crows Respawn Timers</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#111;color:#f9f9f9;margin:0;padding:2rem;min-height:100vh;display:flex;flex-direction:column;gap:2rem}
+    h1{margin:0;text-align:center}
+    .form-card,.timers-card{background:#1e1e1e;padding:1.5rem;border-radius:1rem;box-shadow:0 6px 18px rgba(0,0,0,.6)}
+    label{display:block;margin:.75rem 0 .25rem}
+    input[type="text"],input[type="number"]{width:100%;padding:.5rem .75rem;border-radius:.5rem;border:none;background:#2c2c2c;color:#f9f9f9}
+    button{margin-top:1rem;padding:.6rem 1.25rem;border:none;border-radius:.75rem;background:#4f8bff;color:#fff;font-weight:600;font-size:.95rem;cursor:pointer;transition:background .2s}
+    button:hover{background:#79a7ff}
+    table{width:100%;border-collapse:collapse;margin-top:1rem}
+    th,td{padding:.5rem;text-align:center}
+    th{background:#333}
+    tr:nth-child(even){background:#262626}
+  </style>
 </head>
 <body>
-    <a href="NightcrowTimer.html">Nightcrow Timer</a>
-  <h1>Hello, GitHub Pages!</h1>
-  <p>This is my site’s homepage.</p>
+  <h1>Boss Respawn Timers</h1>
+
+  <div class="form-card">
+    <form id="timerForm">
+      <label>Boss name</label>
+      <input type="text" id="bossName" placeholder="e.g. Kiaron" required />
+
+      <label>Base respawn interval (hours)</label>
+      <input type="number" id="interval" min="0" step="0.1" value="11" required />
+
+      <label>Random delay (hours)</label>
+      <input type="number" id="variance" min="0" step="0.1" value="3" required />
+
+      <button type="submit">Add Timer (killed now)</button>
+    </form>
+  </div>
+
+  <div class="timers-card" id="timersCard" hidden>
+    <h2>Active Timers</h2>
+    <table id="timersTable">
+      <thead>
+        <tr>
+          <th>Boss</th>
+          <th>Window</th>
+          <th>Countdown</th>
+          <th>Remove</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    const form = document.getElementById('timerForm');
+    const tableBody = document.querySelector('#timersTable tbody');
+    const timersCard = document.getElementById('timersCard');
+    const timers = [];
+
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const boss = document.getElementById('bossName').value.trim() || 'Boss';
+      const baseHrs = parseFloat(document.getElementById('interval').value);
+      const randHrs = parseFloat(document.getElementById('variance').value);
+      const killDate = new Date(); // assume kill happened now
+
+      const minRespawn = new Date(killDate.getTime() + baseHrs*3600*1000);
+      const maxRespawn = new Date(minRespawn.getTime() + randHrs*3600*1000);
+      const row = tableBody.insertRow();
+      const id = Date.now();
+      row.setAttribute('data-id', id);
+      row.insertCell().textContent = boss;
+      row.insertCell().textContent = `${minRespawn.toLocaleTimeString()} — ${maxRespawn.toLocaleTimeString()}`;
+      const countdownCell = row.insertCell();
+      const removeCell = row.insertCell();
+      const removeBtn = document.createElement('button');
+      removeBtn.textContent = '✕';
+      removeBtn.onclick = () => removeTimer(id);
+      removeCell.appendChild(removeBtn);
+
+      timers.push({id,min:minRespawn,max:maxRespawn,cell:countdownCell,row});
+      timersCard.hidden = false;
+      form.reset();
+      update();
+    });
+
+    function removeTimer(id){
+      const idx = timers.findIndex(t=>t.id===id);
+      if(idx>-1){tableBody.removeChild(timers[idx].row);timers.splice(idx,1)}
+      if(!timers.length) timersCard.hidden = true;
+    }
+
+    function update(){
+      const now = new Date();
+      timers.forEach(t=>{
+        if(now < t.min){ t.cell.textContent = `Earliest: ${format(t.min - now)}`; }
+        else if(now >= t.min && now <= t.max){ t.cell.textContent = `Guaranteed: ${format(t.max - now)}`; }
+        else{ t.cell.textContent = 'Spawn due'; }
+      });
+    }
+    function format(ms){
+      const s=Math.floor(ms/1000);const h=String(Math.floor(s/3600)).padStart(2,'0');const m=String(Math.floor(s%3600/60)).padStart(2,'0');const se=String(s%60).padStart(2,'0');return `${h}:${m}:${se}`;}
+    setInterval(update,1000);
+  </script>
 </body>
 </html>
