@@ -26,6 +26,9 @@
       <label>Boss name</label>
       <input type="text" id="bossName" placeholder="e.g. Kiaron" required />
 
+      <label>Map</label>
+      <input type="text" id="mapName" placeholder="e.g. Kildebat" required />
+
       <label>Base respawn interval (hours)</label>
       <input type="number" id="interval" min="0" step="0.1" value="11" required />
 
@@ -42,6 +45,7 @@
       <thead>
         <tr>
           <th>Boss</th>
+          <th>Map</th>
           <th>Window</th>
           <th>Countdown</th>
           <th>Remove</th>
@@ -55,52 +59,102 @@
     const form = document.getElementById('timerForm');
     const tableBody = document.querySelector('#timersTable tbody');
     const timersCard = document.getElementById('timersCard');
-    const timers = [];
+    let timers = [];
+
+    // Load timers from localStorage on page load
+    window.onload = () => {
+      const saved = localStorage.getItem('timers');
+      if (saved) {
+        timers = JSON.parse(saved);
+        timers.forEach(t => addTimerRow(t));
+        timersCard.hidden = timers.length === 0;
+        update();
+      }
+    };
 
     form.addEventListener('submit', e => {
       e.preventDefault();
       const boss = document.getElementById('bossName').value.trim() || 'Boss';
+      const map = document.getElementById('mapName').value.trim() || 'Unknown Map';
       const baseHrs = parseFloat(document.getElementById('interval').value);
       const randHrs = parseFloat(document.getElementById('variance').value);
-      const killDate = new Date(); // assume kill happened now
+      const killDate = new Date();
 
       const minRespawn = new Date(killDate.getTime() + baseHrs*3600*1000);
       const maxRespawn = new Date(minRespawn.getTime() + randHrs*3600*1000);
-      const row = tableBody.insertRow();
       const id = Date.now();
-      row.setAttribute('data-id', id);
-      row.insertCell().textContent = boss;
-      row.insertCell().textContent = `${minRespawn.toLocaleTimeString()} — ${maxRespawn.toLocaleTimeString()}`;
-      const countdownCell = row.insertCell();
-      const removeCell = row.insertCell();
-      const removeBtn = document.createElement('button');
-      removeBtn.textContent = '✕';
-      removeBtn.onclick = () => removeTimer(id);
-      removeCell.appendChild(removeBtn);
 
-      timers.push({id,min:minRespawn,max:maxRespawn,cell:countdownCell,row});
+      const timer = {
+        id,
+        boss,
+        map,
+        min: minRespawn.toISOString(),
+        max: maxRespawn.toISOString()
+      };
+
+      timers.push(timer);
+      addTimerRow(timer);
+      saveTimers();
       timersCard.hidden = false;
       form.reset();
       update();
     });
 
-    function removeTimer(id){
-      const idx = timers.findIndex(t=>t.id===id);
-      if(idx>-1){tableBody.removeChild(timers[idx].row);timers.splice(idx,1)}
-      if(!timers.length) timersCard.hidden = true;
+    function addTimerRow(timer) {
+      const row = tableBody.insertRow();
+      row.setAttribute('data-id', timer.id);
+      row.insertCell().textContent = timer.boss;
+      row.insertCell().textContent = timer.map;
+      row.insertCell().textContent = `${new Date(timer.min).toLocaleTimeString()} — ${new Date(timer.max).toLocaleTimeString()}`;
+      const countdownCell = row.insertCell();
+      const removeCell = row.insertCell();
+      const removeBtn = document.createElement('button');
+      removeBtn.textContent = '✕';
+      removeBtn.onclick = () => removeTimer(timer.id);
+      removeCell.appendChild(removeBtn);
+
+      timer.cell = countdownCell;
+      timer.row = row;
     }
 
-    function update(){
+    function removeTimer(id) {
+      const idx = timers.findIndex(t => t.id === id);
+      if (idx > -1) {
+        tableBody.removeChild(timers[idx].row);
+        timers.splice(idx, 1);
+        saveTimers();
+      }
+      if (!timers.length) timersCard.hidden = true;
+    }
+
+    function update() {
       const now = new Date();
-      timers.forEach(t=>{
-        if(now < t.min){ t.cell.textContent = `Earliest: ${format(t.min - now)}`; }
-        else if(now >= t.min && now <= t.max){ t.cell.textContent = `Guaranteed: ${format(t.max - now)}`; }
-        else{ t.cell.textContent = 'Spawn due'; }
+      timers.forEach(t => {
+        const min = new Date(t.min);
+        const max = new Date(t.max);
+        if (now < min) {
+          t.cell.textContent = `Earliest: ${format(min - now)}`;
+        } else if (now >= min && now <= max) {
+          t.cell.textContent = `Guaranteed: ${format(max - now)}`;
+        } else {
+          t.cell.textContent = 'Spawn due';
+        }
       });
     }
-    function format(ms){
-      const s=Math.floor(ms/1000);const h=String(Math.floor(s/3600)).padStart(2,'0');const m=String(Math.floor(s%3600/60)).padStart(2,'0');const se=String(s%60).padStart(2,'0');return `${h}:${m}:${se}`;}
-    setInterval(update,1000);
+
+    function saveTimers() {
+      localStorage.setItem('timers', JSON.stringify(timers));
+    }
+
+    function format(ms) {
+      const s = Math.floor(ms / 1000);
+      const h = String(Math.floor(s / 3600)).padStart(2, '0');
+      const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+      const se = String(s % 60).padStart(2, '0');
+      return `${h}:${m}:${se}`;
+    }
+
+    setInterval(update, 1000);
   </script>
 </body>
 </html>
