@@ -11,7 +11,7 @@
   h1{margin:0;text-align:center}
   .form-card,.timers-card{background:#1e1e1e;padding:1.5rem;border-radius:1rem;box-shadow:0 6px 18px rgba(0,0,0,.6)}
   label{display:block;margin:.75rem 0 .25rem}
-  input[type="text"],input[type="number"]{width:100%;padding:.5rem .75rem;border-radius:.5rem;border:none;background:#2c2c2c;color:#f9f9f9}
+  select,input[type="text"],input[type="number"]{width:100%;padding:.5rem .75rem;border-radius:.5rem;border:none;background:#2c2c2c;color:#f9f9f9}
   button{margin-top:1rem;padding:.55rem 1.2rem;border:none;border-radius:.75rem;background:#4f8bff;color:#fff;font-weight:600;font-size:.95rem;cursor:pointer;transition:background .2s}
   button:hover{background:#79a7ff}
   table{width:100%;border-collapse:collapse;margin-top:1rem}
@@ -26,70 +26,54 @@
 
 <h1>Boss Respawn Timers</h1>
 
-<!-- ====== new top bar ====== -->
 <div id="topBar">
   <button id="exportBtn">Export Timers</button>
   <button id="importBtn">Import Timers</button>
-  <input  id="importFile" type="file" accept=".json"/>
+  <input id="importFile" type="file" accept=".json"/>
 </div>
 
 <div class="form-card">
   <form id="timerForm">
     <label>Boss name</label>
-    <input type="text" id="bossName" placeholder="e.g. Kiaron" required />
+    <select id="bossName" required>
+      <option value="" disabled selected>Select a boss</option>
+      <option value="Kiaron">Kiaron</option>
+      <option value="Anggolt">Anggolt</option>
+      <option value="Inferno">Inferno</option>
+      <option value="Grish">Grish</option>
+      <option value="addNewBoss" style="color:#aaa;">+ Add new boss...</option>
+    </select>
 
     <label>Map</label>
     <input type="text" id="mapName" placeholder="e.g. Kildebat" required />
 
-   <label>Kill time</label>
-<div style="display:flex;gap:0.5rem;align-items:center;">
-  <input
-    type="number"
-    id="killHour"
-    min="1"
-    max="12"
-    placeholder="HH"
-    required
-    maxlength="2"
-    style="width:4rem;padding:.5rem;border-radius:.5rem;border:none;background:#2c2c2c;color:#f9f9f9;text-align:center"
-    oninput="
-      if (this.value.length > 2) this.value = this.value.slice(0, 2);
-      if (+this.value > 12) this.value = 12;
-      if (+this.value < 1) this.value = 1;
-    "
-  />
-  <span>:</span>
-  <input
-    type="number"
-    id="killMinute"
-    min="0"
-    max="59"
-    placeholder="MM"
-    required
-    maxlength="2"
-    style="width:4rem;padding:.5rem;border-radius:.5rem;border:none;background:#2c2c2c;color:#f9f9f9;text-align:center"
-    oninput="
-      if (this.value.length > 2) this.value = this.value.slice(0, 2);
-      if (+this.value > 59) this.value = 59;
-      if (+this.value < 0) this.value = 0;
-    "
-  />
-  <select
-    id="killAmPm"
-    required
-    style="padding:.5rem;border-radius:.5rem;border:none;background:#2c2c2c;color:#f9f9f9;"
-  >
-    <option value="AM">AM</option>
-    <option value="PM">PM</option>
-  </select>
-</div>
-
+    <label>Kill time</label>
+    <div style="display:flex;gap:0.5rem;align-items:center;">
+      <input type="number" id="killHour" min="1" max="12" placeholder="HH" required maxlength="2"
+        style="width:4rem;padding:.5rem;border-radius:.5rem;border:none;background:#2c2c2c;color:#f9f9f9;text-align:center"
+        oninput="if(this.value.length>2)this.value=this.value.slice(0,2);if(+this.value>12)this.value=12;if(+this.value<1)this.value=1;"
+      />
+      <span>:</span>
+      <input type="number" id="killMinute" min="0" max="59" placeholder="MM" required maxlength="2"
+        style="width:4rem;padding:.5rem;border-radius:.5rem;border:none;background:#2c2c2c;color:#f9f9f9;text-align:center"
+        oninput="if(this.value.length>2)this.value=this.value.slice(0,2);if(+this.value>59)this.value=59;if(+this.value<0)this.value=0;"
+      />
+      <select id="killAmPm" required
+        style="padding:.5rem;border-radius:.5rem;border:none;background:#2c2c2c;color:#f9f9f9;">
+        <option value="AM">AM</option>
+        <option value="PM">PM</option>
+      </select>
+    </div>
 
     <label>Base respawn interval (hours)</label>
-    <input type="number" id="interval" min="0" step="0.1" value="11" required />
+    <input type="number" id="interval" min="0" max="99" step="1" value="11" required maxlength="2"
+      oninput="if(this.value.length>2)this.value=this.value.slice(0,2);if(+this.value>99)this.value=99;if(+this.value<0)this.value=0;"
+    />
 
     <label>Random delay (hours)</label>
-    <input type="number" id="variance" min="0" step="0.1" value="3" required />
+    <input type="number" id="variance" min="0" max="99" step="1" value="3" required maxlength="2"
+      oninput="if(this.value.length>2)this.value=this.value.slice(0,2);if(+this.value>99)this.value=99;if(+this.value<0)this.value=0;"
+    />
 
     <button type="submit">Add Timer</button>
   </form>
@@ -112,13 +96,13 @@
 </div>
 
 <script>
-/* ------------- original logic ------------- */
+/* -------- core data -------- */
 const form = document.getElementById('timerForm');
 const tableBody  = document.querySelector('#timersTable tbody');
 const timersCard = document.getElementById('timersCard');
 let timers = [];
 
-/* restore from localStorage */
+/* -------- restore saved -------- */
 window.onload = () => {
   const saved = localStorage.getItem('timers');
   if (saved){
@@ -129,11 +113,38 @@ window.onload = () => {
   }
 };
 
-/* form submit */
+/* -------- add‑new‑boss logic -------- */
+const bossSelect = document.getElementById('bossName');
+bossSelect.addEventListener('change', () => {
+  if (bossSelect.value === 'addNewBoss') {
+    let newBoss = prompt('Enter new boss name:');
+    if (!newBoss) { bossSelect.value = ""; return; }
+    newBoss = newBoss.trim();
+    if (!newBoss){ alert('Boss name cannot be empty.'); bossSelect.value=""; return; }
+
+    // prevent duplicates (case‑insensitive)
+    const exists = Array.from(bossSelect.options)
+      .some(opt => opt.value.toLowerCase() === newBoss.toLowerCase());
+    if (exists) {
+      alert('This boss already exists.');
+      bossSelect.value = bossSelect.querySelector(
+        `option[value="${newBoss}"]`
+      ) ? newBoss : "";   // select existing if casing differs
+      return;
+    }
+    const addOpt = bossSelect.querySelector('option[value="addNewBoss"]');
+    const opt = document.createElement('option');
+    opt.value = newBoss; opt.textContent = newBoss;
+    bossSelect.insertBefore(opt, addOpt);
+    bossSelect.value = newBoss;
+  }
+});
+
+/* -------- form submit -------- */
 form.addEventListener('submit', e => {
   e.preventDefault();
-  const boss = document.getElementById('bossName').value.trim() || 'Boss';
-  const map  = document.getElementById('mapName').value.trim()  || 'Unknown Map';
+  const boss = bossSelect.value;
+  const map  = document.getElementById('mapName').value.trim() || 'Unknown Map';
   const baseHrs = +document.getElementById('interval').value;
   const randHrs = +document.getElementById('variance').value;
 
@@ -149,20 +160,22 @@ form.addEventListener('submit', e => {
 
   const minRespawn = new Date(killDate.getTime() + baseHrs*3600e3);
   const maxRespawn = new Date(minRespawn.getTime() + randHrs*3600e3);
+
   const timer = {
     id: Date.now(),
     boss, map,
-    min:minRespawn.toISOString(),
-    max:maxRespawn.toISOString()
+    min: minRespawn.toISOString(),
+    max: maxRespawn.toISOString()
   };
   timers.push(timer);
   addTimerRow(timer);
   saveTimers();
   timersCard.hidden = false;
   form.reset();
+  bossSelect.value = ""; // reset dropdown
 });
 
-/* add row helper */
+/* -------- table helpers -------- */
 function addTimerRow(t){
   const row = tableBody.insertRow();
   row.dataset.id = t.id;
@@ -176,11 +189,9 @@ function addTimerRow(t){
   row.insertCell().appendChild(rmBtn);
   t.cell = cdCell; t.row = row;
 }
-
-/* remove */
 function removeTimer(id){
   const idx = timers.findIndex(t=>t.id===id);
-  if (idx>-1){
+  if(idx>-1){
     tableBody.removeChild(timers[idx].row);
     timers.splice(idx,1);
     saveTimers();
@@ -188,83 +199,85 @@ function removeTimer(id){
   timersCard.hidden = !timers.length;
 }
 
-/* storage / update */
+/* -------- storage / countdown update -------- */
 function saveTimers(){ localStorage.setItem('timers',JSON.stringify(timers)); }
+
 function update(){
   const now = new Date();
   timers.forEach(t=>{
     const min=new Date(t.min), max=new Date(t.max);
-    if(now<min) t.cell.textContent=`Earliest: ${fmtCD(min-now)}`;
-    else if(now<=max) t.cell.textContent=`Guaranteed: ${fmtCD(max-now)}`;
-    else t.cell.textContent='Spawn due';
+    const cell=t.cell;
+    if(now<min){
+      cell.style.color='#f9f9f9';
+      cell.innerHTML=`Earliest: ${fmtCD(min-now)}`;
+      t.nextSpawnTime=min;
+    }else if(now<=max){
+      cell.style.color='red';
+      cell.innerHTML=`Guaranteed: ${fmtCD(max-now)} <small style="font-size:0.7em;margin-left:4px;color:#f44;">SPAWN</small>`;
+      t.nextSpawnTime=max;
+    }else{
+      cell.style.color='red';
+      cell.textContent='Spawn due';
+      t.nextSpawnTime=now;
+    }
   });
+  timers.sort((a,b)=>a.nextSpawnTime-b.nextSpawnTime);
+  timers.forEach(t=>tableBody.appendChild(t.row));
 }
 setInterval(update,1000);
 
-/* formatting helpers */
-const fmtTime = d => {
-  let hours = d.getHours() % 12 || 12;
-  let minutes = d.getMinutes().toString().padStart(2, '0');
-  let ampm = d.getHours() >= 12 ? 'PM' : 'AM';
-  return `${hours}:${minutes} ${ampm}`;
+/* -------- formatting helpers -------- */
+const fmtTime=d=>{
+  let h=d.getHours()%12||12;
+  let m=d.getMinutes().toString().padStart(2,'0');
+  return `${h}:${m} ${d.getHours()>=12?'PM':'AM'}`;
 };
-
 function fmtCD(ms){
-  const totalSeconds = Math.ceil(ms / 1000);
-  const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
-  const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
-  const seconds = (totalSeconds % 60).toString().padStart(2, '0');
-  return `${hours}:${minutes}:${seconds}`;
+  const s=Math.ceil(ms/1000);
+  const h=Math.floor(s/3600).toString().padStart(2,'0');
+  const m=Math.floor(s%3600/60).toString().padStart(2,'0');
+  const sc=(s%60).toString().padStart(2,'0');
+  return `${h}:${m}:${sc}`;
 }
 
-/* ------------- NEW: Export / Import ------------- */
-const exportBtn = document.getElementById('exportBtn');
-const importBtn = document.getElementById('importBtn');
-const importFile= document.getElementById('importFile');
+/* -------- export / import -------- */
+const exportBtn=document.getElementById('exportBtn');
+const importBtn=document.getElementById('importBtn');
+const importFile=document.getElementById('importFile');
 
-/* export as download */
-exportBtn.onclick = () => {
-  if(!timers.length) return alert("No timers to export.");
-  const blob = new Blob([JSON.stringify(timers, null, 2)], {type:'application/json'});
-  const stamp = new Date().toISOString().replace(/[-:]/g,"").slice(0,15);
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `night-crows-timers-${stamp}.json`;
-  a.click(); URL.revokeObjectURL(a.href);
+exportBtn.onclick=()=>{
+  if(!timers.length)return alert("No timers to export.");
+  const blob=new Blob([JSON.stringify(timers,null,2)],{type:'application/json'});
+  const stamp=new Date().toISOString().replace(/[-:]/g,"").slice(0,15);
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`night-crows-timers-${stamp}.json`;
+  a.click();URL.revokeObjectURL(a.href);
 };
-
-/* trigger hidden file input */
-importBtn.onclick = ()=> importFile.click();
-
-/* handle chosen file */
-importFile.onchange = () => {
-  const file = importFile.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
+importBtn.onclick=()=>importFile.click();
+importFile.onchange=()=>{
+  const file=importFile.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
     let incoming;
-    try{ incoming = JSON.parse(e.target.result); }
-    catch{ return alert("Invalid file."); }
-    if(!Array.isArray(incoming)) return alert("Invalid timer file.");
-
-    const mode = confirm("Click OK to MERGE with your timers.\nClick Cancel to REPLACE them.") ? 'merge' : 'replace';
-
+    try{incoming=JSON.parse(e.target.result);}catch{return alert("Invalid file.");}
+    if(!Array.isArray(incoming))return alert("Invalid timer file.");
+    const mode=confirm("Click OK to MERGE with your timers.\nClick Cancel to REPLACE them.")?'merge':'replace';
     if(mode==='replace'){
       timers.forEach(t=>tableBody.removeChild(t.row));
-      timers = [];
+      timers=[];
     }
-
     incoming.forEach(t=>{
-      if(!timers.some(x=>x.id===t.id)){   // simple dedupe by id
-        timers.push(t);
-        addTimerRow(t);
+      if(!timers.some(x=>x.id===t.id)){
+        timers.push(t);addTimerRow(t);
       }
     });
     saveTimers();
-    timersCard.hidden = !timers.length;
+    timersCard.hidden=!timers.length;
     update();
     alert(`Imported ${incoming.length} timer(s).`);
-    importFile.value='';      // reset input
+    importFile.value='';
   };
   reader.readAsText(file);
 };
