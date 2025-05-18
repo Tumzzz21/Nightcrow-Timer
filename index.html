@@ -11,7 +11,7 @@
   h1{margin:0;text-align:center}
   .form-card,.timers-card{background:#1e1e1e;padding:1.5rem;border-radius:1rem;box-shadow:0 6px 18px rgba(0,0,0,.6)}
   label{display:block;margin:.75rem 0 .25rem}
-  input[type="text"],input[type="number"],input[type="time"]{width:100%;padding:.5rem .75rem;border-radius:.5rem;border:none;background:#2c2c2c;color:#f9f9f9}
+  input[type="text"],input[type="number"]{width:100%;padding:.5rem .75rem;border-radius:.5rem;border:none;background:#2c2c2c;color:#f9f9f9}
   button{margin-top:1rem;padding:.55rem 1.2rem;border:none;border-radius:.75rem;background:#4f8bff;color:#fff;font-weight:600;font-size:.95rem;cursor:pointer;transition:background .2s}
   button:hover{background:#79a7ff}
   table{width:100%;border-collapse:collapse;margin-top:1rem}
@@ -41,8 +41,49 @@
     <label>Map</label>
     <input type="text" id="mapName" placeholder="e.g. Kildebat" required />
 
-    <label>Kill time</label>
-    <input type="time" id="killTime" required />
+   <label>Kill time</label>
+<div style="display:flex;gap:0.5rem;align-items:center;">
+  <input
+    type="number"
+    id="killHour"
+    min="1"
+    max="12"
+    placeholder="HH"
+    required
+    maxlength="2"
+    style="width:4rem;padding:.5rem;border-radius:.5rem;border:none;background:#2c2c2c;color:#f9f9f9;text-align:center"
+    oninput="
+      if (this.value.length > 2) this.value = this.value.slice(0, 2);
+      if (+this.value > 12) this.value = 12;
+      if (+this.value < 1) this.value = 1;
+    "
+  />
+  <span>:</span>
+  <input
+    type="number"
+    id="killMinute"
+    min="0"
+    max="59"
+    placeholder="MM"
+    required
+    maxlength="2"
+    style="width:4rem;padding:.5rem;border-radius:.5rem;border:none;background:#2c2c2c;color:#f9f9f9;text-align:center"
+    oninput="
+      if (this.value.length > 2) this.value = this.value.slice(0, 2);
+      if (+this.value > 59) this.value = 59;
+      if (+this.value < 0) this.value = 0;
+    "
+  />
+  <select
+    id="killAmPm"
+    required
+    style="padding:.5rem;border-radius:.5rem;border:none;background:#2c2c2c;color:#f9f9f9;"
+  >
+    <option value="AM">AM</option>
+    <option value="PM">PM</option>
+  </select>
+</div>
+
 
     <label>Base respawn interval (hours)</label>
     <input type="number" id="interval" min="0" step="0.1" value="11" required />
@@ -96,8 +137,15 @@ form.addEventListener('submit', e => {
   const baseHrs = +document.getElementById('interval').value;
   const randHrs = +document.getElementById('variance').value;
 
-  const [hh, mm] = document.getElementById('killTime').value.split(':');
-  const killDate = new Date(); killDate.setHours(+hh,+mm,0,0);
+  const hh = +document.getElementById('killHour').value;
+  const mm = +document.getElementById('killMinute').value;
+  const ampm = document.getElementById('killAmPm').value;
+
+  let hours24 = hh % 12;
+  if (ampm === 'PM') hours24 += 12;
+
+  const killDate = new Date();
+  killDate.setHours(hours24, mm, 0, 0);
 
   const minRespawn = new Date(killDate.getTime() + baseHrs*3600e3);
   const maxRespawn = new Date(minRespawn.getTime() + randHrs*3600e3);
@@ -154,10 +202,19 @@ function update(){
 setInterval(update,1000);
 
 /* formatting helpers */
-const fmtTime = d=>d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+const fmtTime = d => {
+  let hours = d.getHours() % 12 || 12;
+  let minutes = d.getMinutes().toString().padStart(2, '0');
+  let ampm = d.getHours() >= 12 ? 'PM' : 'AM';
+  return `${hours}:${minutes} ${ampm}`;
+};
+
 function fmtCD(ms){
-  const m=Math.ceil(ms/6e4);
-  return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+  const totalSeconds = Math.ceil(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
+  const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+  const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+  return `${hours}:${minutes}:${seconds}`;
 }
 
 /* ------------- NEW: Export / Import ------------- */
