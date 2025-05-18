@@ -1,160 +1,216 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Night Crows Respawn Timers</title>
-  <style>
-    body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#111;color:#f9f9f9;margin:0;padding:2rem;min-height:100vh;display:flex;flex-direction:column;gap:2rem}
-    h1{margin:0;text-align:center}
-    .form-card,.timers-card{background:#1e1e1e;padding:1.5rem;border-radius:1rem;box-shadow:0 6px 18px rgba(0,0,0,.6)}
-    label{display:block;margin:.75rem 0 .25rem}
-    input[type="text"],input[type="number"]{width:100%;padding:.5rem .75rem;border-radius:.5rem;border:none;background:#2c2c2c;color:#f9f9f9}
-    button{margin-top:1rem;padding:.6rem 1.25rem;border:none;border-radius:.75rem;background:#4f8bff;color:#fff;font-weight:600;font-size:.95rem;cursor:pointer;transition:background .2s}
-    button:hover{background:#79a7ff}
-    table{width:100%;border-collapse:collapse;margin-top:1rem}
-    th,td{padding:.5rem;text-align:center}
-    th{background:#333}
-    tr:nth-child(even){background:#262626}
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link href="manifest.json">
+<meta name="theme-color" content="#4f8bff">
+<title>Night Crows Respawn Timers</title>
+<style>
+  body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#111;color:#f9f9f9;margin:0;padding:2rem;min-height:100vh;display:flex;flex-direction:column;gap:1.5rem}
+  h1{margin:0;text-align:center}
+  .form-card,.timers-card{background:#1e1e1e;padding:1.5rem;border-radius:1rem;box-shadow:0 6px 18px rgba(0,0,0,.6)}
+  label{display:block;margin:.75rem 0 .25rem}
+  input[type="text"],input[type="number"],input[type="time"]{width:100%;padding:.5rem .75rem;border-radius:.5rem;border:none;background:#2c2c2c;color:#f9f9f9}
+  button{margin-top:1rem;padding:.55rem 1.2rem;border:none;border-radius:.75rem;background:#4f8bff;color:#fff;font-weight:600;font-size:.95rem;cursor:pointer;transition:background .2s}
+  button:hover{background:#79a7ff}
+  table{width:100%;border-collapse:collapse;margin-top:1rem}
+  th,td{padding:.5rem;text-align:center}
+  th{background:#333}
+  tr:nth-child(even){background:#262626}
+  #topBar{display:flex;justify-content:center;gap:.75rem;flex-wrap:wrap}
+  #importFile{display:none}
+</style>
 </head>
 <body>
-  <h1>Boss Respawn Timers</h1>
 
-  <div class="form-card">
-    <form id="timerForm">
-      <label>Boss name</label>
-      <input type="text" id="bossName" placeholder="e.g. Kiaron" required />
+<h1>Boss Respawn Timers</h1>
 
-      <label>Map</label>
-      <input type="text" id="mapName" placeholder="e.g. Kildebat" required />
+<!-- ====== new top bar ====== -->
+<div id="topBar">
+  <button id="exportBtn">Export Timers</button>
+  <button id="importBtn">Import Timers</button>
+  <input  id="importFile" type="file" accept=".json"/>
+</div>
 
-      <label>Base respawn interval (hours)</label>
-      <input type="number" id="interval" min="0" step="0.1" value="11" required />
+<div class="form-card">
+  <form id="timerForm">
+    <label>Boss name</label>
+    <input type="text" id="bossName" placeholder="e.g. Kiaron" required />
 
-      <label>Random delay (hours)</label>
-      <input type="number" id="variance" min="0" step="0.1" value="3" required />
+    <label>Map</label>
+    <input type="text" id="mapName" placeholder="e.g. Kildebat" required />
 
-      <button type="submit">Add Timer (killed now)</button>
-    </form>
-  </div>
+    <label>Kill time</label>
+    <input type="time" id="killTime" required />
 
-  <div class="timers-card" id="timersCard" hidden>
-    <h2>Active Timers</h2>
-    <table id="timersTable">
-      <thead>
-        <tr>
-          <th>Boss</th>
-          <th>Map</th>
-          <th>Window</th>
-          <th>Countdown</th>
-          <th>Remove</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
+    <label>Base respawn interval (hours)</label>
+    <input type="number" id="interval" min="0" step="0.1" value="11" required />
 
-  <script>
-    const form = document.getElementById('timerForm');
-    const tableBody = document.querySelector('#timersTable tbody');
-    const timersCard = document.getElementById('timersCard');
-    let timers = [];
+    <label>Random delay (hours)</label>
+    <input type="number" id="variance" min="0" step="0.1" value="3" required />
 
-    // Load timers from localStorage on page load
-    window.onload = () => {
-      const saved = localStorage.getItem('timers');
-      if (saved) {
-        timers = JSON.parse(saved);
-        timers.forEach(t => addTimerRow(t));
-        timersCard.hidden = timers.length === 0;
-        update();
+    <button type="submit">Add Timer</button>
+  </form>
+</div>
+
+<div class="timers-card" id="timersCard" hidden>
+  <h2>Active Timers</h2>
+  <table id="timersTable">
+    <thead>
+      <tr>
+        <th>Boss</th>
+        <th>Map</th>
+        <th>Window</th>
+        <th>Countdown</th>
+        <th>Remove</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+/* ------------- original logic ------------- */
+const form = document.getElementById('timerForm');
+const tableBody  = document.querySelector('#timersTable tbody');
+const timersCard = document.getElementById('timersCard');
+let timers = [];
+
+/* restore from localStorage */
+window.onload = () => {
+  const saved = localStorage.getItem('timers');
+  if (saved){
+    timers = JSON.parse(saved);
+    timers.forEach(addTimerRow);
+    timersCard.hidden = !timers.length;
+    update();
+  }
+};
+
+/* form submit */
+form.addEventListener('submit', e => {
+  e.preventDefault();
+  const boss = document.getElementById('bossName').value.trim() || 'Boss';
+  const map  = document.getElementById('mapName').value.trim()  || 'Unknown Map';
+  const baseHrs = +document.getElementById('interval').value;
+  const randHrs = +document.getElementById('variance').value;
+
+  const [hh, mm] = document.getElementById('killTime').value.split(':');
+  const killDate = new Date(); killDate.setHours(+hh,+mm,0,0);
+
+  const minRespawn = new Date(killDate.getTime() + baseHrs*3600e3);
+  const maxRespawn = new Date(minRespawn.getTime() + randHrs*3600e3);
+  const timer = {
+    id: Date.now(),
+    boss, map,
+    min:minRespawn.toISOString(),
+    max:maxRespawn.toISOString()
+  };
+  timers.push(timer);
+  addTimerRow(timer);
+  saveTimers();
+  timersCard.hidden = false;
+  form.reset();
+});
+
+/* add row helper */
+function addTimerRow(t){
+  const row = tableBody.insertRow();
+  row.dataset.id = t.id;
+  row.insertCell().textContent = t.boss;
+  row.insertCell().textContent = t.map;
+  row.insertCell().textContent = `${fmtTime(new Date(t.min))} — ${fmtTime(new Date(t.max))}`;
+  const cdCell = row.insertCell();
+  const rmBtn = document.createElement('button');
+  rmBtn.textContent = '✕';
+  rmBtn.onclick = () => removeTimer(t.id);
+  row.insertCell().appendChild(rmBtn);
+  t.cell = cdCell; t.row = row;
+}
+
+/* remove */
+function removeTimer(id){
+  const idx = timers.findIndex(t=>t.id===id);
+  if (idx>-1){
+    tableBody.removeChild(timers[idx].row);
+    timers.splice(idx,1);
+    saveTimers();
+  }
+  timersCard.hidden = !timers.length;
+}
+
+/* storage / update */
+function saveTimers(){ localStorage.setItem('timers',JSON.stringify(timers)); }
+function update(){
+  const now = new Date();
+  timers.forEach(t=>{
+    const min=new Date(t.min), max=new Date(t.max);
+    if(now<min) t.cell.textContent=`Earliest: ${fmtCD(min-now)}`;
+    else if(now<=max) t.cell.textContent=`Guaranteed: ${fmtCD(max-now)}`;
+    else t.cell.textContent='Spawn due';
+  });
+}
+setInterval(update,1000);
+
+/* formatting helpers */
+const fmtTime = d=>d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+function fmtCD(ms){
+  const m=Math.ceil(ms/6e4);
+  return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+}
+
+/* ------------- NEW: Export / Import ------------- */
+const exportBtn = document.getElementById('exportBtn');
+const importBtn = document.getElementById('importBtn');
+const importFile= document.getElementById('importFile');
+
+/* export as download */
+exportBtn.onclick = () => {
+  if(!timers.length) return alert("No timers to export.");
+  const blob = new Blob([JSON.stringify(timers, null, 2)], {type:'application/json'});
+  const stamp = new Date().toISOString().replace(/[-:]/g,"").slice(0,15);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `night-crows-timers-${stamp}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+};
+
+/* trigger hidden file input */
+importBtn.onclick = ()=> importFile.click();
+
+/* handle chosen file */
+importFile.onchange = () => {
+  const file = importFile.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    let incoming;
+    try{ incoming = JSON.parse(e.target.result); }
+    catch{ return alert("Invalid file."); }
+    if(!Array.isArray(incoming)) return alert("Invalid timer file.");
+
+    const mode = confirm("Click OK to MERGE with your timers.\nClick Cancel to REPLACE them.") ? 'merge' : 'replace';
+
+    if(mode==='replace'){
+      timers.forEach(t=>tableBody.removeChild(t.row));
+      timers = [];
+    }
+
+    incoming.forEach(t=>{
+      if(!timers.some(x=>x.id===t.id)){   // simple dedupe by id
+        timers.push(t);
+        addTimerRow(t);
       }
-    };
-
-    form.addEventListener('submit', e => {
-      e.preventDefault();
-      const boss = document.getElementById('bossName').value.trim() || 'Boss';
-      const map = document.getElementById('mapName').value.trim() || 'Unknown Map';
-      const baseHrs = parseFloat(document.getElementById('interval').value);
-      const randHrs = parseFloat(document.getElementById('variance').value);
-      const killDate = new Date();
-
-      const minRespawn = new Date(killDate.getTime() + baseHrs*3600*1000);
-      const maxRespawn = new Date(minRespawn.getTime() + randHrs*3600*1000);
-      const id = Date.now();
-
-      const timer = {
-        id,
-        boss,
-        map,
-        min: minRespawn.toISOString(),
-        max: maxRespawn.toISOString()
-      };
-
-      timers.push(timer);
-      addTimerRow(timer);
-      saveTimers();
-      timersCard.hidden = false;
-      form.reset();
-      update();
     });
-
-    function addTimerRow(timer) {
-      const row = tableBody.insertRow();
-      row.setAttribute('data-id', timer.id);
-      row.insertCell().textContent = timer.boss;
-      row.insertCell().textContent = timer.map;
-      row.insertCell().textContent = `${new Date(timer.min).toLocaleTimeString()} — ${new Date(timer.max).toLocaleTimeString()}`;
-      const countdownCell = row.insertCell();
-      const removeCell = row.insertCell();
-      const removeBtn = document.createElement('button');
-      removeBtn.textContent = '✕';
-      removeBtn.onclick = () => removeTimer(timer.id);
-      removeCell.appendChild(removeBtn);
-
-      timer.cell = countdownCell;
-      timer.row = row;
-    }
-
-    function removeTimer(id) {
-      const idx = timers.findIndex(t => t.id === id);
-      if (idx > -1) {
-        tableBody.removeChild(timers[idx].row);
-        timers.splice(idx, 1);
-        saveTimers();
-      }
-      if (!timers.length) timersCard.hidden = true;
-    }
-
-    function update() {
-      const now = new Date();
-      timers.forEach(t => {
-        const min = new Date(t.min);
-        const max = new Date(t.max);
-        if (now < min) {
-          t.cell.textContent = `Earliest: ${format(min - now)}`;
-        } else if (now >= min && now <= max) {
-          t.cell.textContent = `Guaranteed: ${format(max - now)}`;
-        } else {
-          t.cell.textContent = 'Spawn due';
-        }
-      });
-    }
-
-    function saveTimers() {
-      localStorage.setItem('timers', JSON.stringify(timers));
-    }
-
-    function format(ms) {
-      const s = Math.floor(ms / 1000);
-      const h = String(Math.floor(s / 3600)).padStart(2, '0');
-      const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
-      const se = String(s % 60).padStart(2, '0');
-      return `${h}:${m}:${se}`;
-    }
-
-    setInterval(update, 1000);
-  </script>
+    saveTimers();
+    timersCard.hidden = !timers.length;
+    update();
+    alert(`Imported ${incoming.length} timer(s).`);
+    importFile.value='';      // reset input
+  };
+  reader.readAsText(file);
+};
+</script>
 </body>
 </html>
