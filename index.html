@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<link href="manifest.json">
+<link rel="manifest.json"  href="manifest.json">
+<link href="sw.js" >
+<link href="timer_0.5.js">
 <meta name="theme-color" content="#4f8bff">
 <title>Night Crows Respawn Timers</title>
 <style>
@@ -60,11 +62,12 @@
     </div>
 
     <label>Base respawn interval (hours)</label>
-    <input type="number" id="interval" min="0" max="99" step="1" value="11" required maxlength="2" />
+    <input type="number" id="interval"
+       min="0" max="99" step="0.5" value="11" required maxlength="4" />
 
     <label>Random delay (hours)</label>
-    <input type="number" id="variance" min="0" max="99" step="1" value="3" required maxlength="2" />
-
+    <input type="number" id="variance"
+       min="0" max="99" step="0.5" value="3"  required maxlength="4" />
     <button type="submit">Add Timer</button>
   </form>
 </div>
