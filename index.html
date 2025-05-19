@@ -3,26 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<link rel="manifest.json"  href="manifest.json">
-<link href="sw.js" >
-<link href="timer_0.5.js">
-<meta name="theme-color" content="#4f8bff">
+<link rel="manifest" href="manifest.json" />
+<link rel="stylesheet" href="styles.css" />
+<meta name="theme-color" content="#4f8bff" />
 <title>Night Crows Respawn Timers</title>
-<style>
-  body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#111;color:#f9f9f9;margin:0;padding:2rem;min-height:100vh;display:flex;flex-direction:column;gap:1.5rem}
-  h1{margin:0;text-align:center}
-  .form-card,.timers-card{background:#1e1e1e;padding:1.5rem;border-radius:1rem;box-shadow:0 6px 18px rgba(0,0,0,.6)}
-  label{display:block;margin:.75rem 0 .25rem}
-  select,input[type="number"]{width:100%;padding:.5rem .75rem;border-radius:.5rem;border:none;background:#2c2c2c;color:#f9f9f9}
-  button{margin-top:1rem;padding:.55rem 1.2rem;border:none;border-radius:.75rem;background:#4f8bff;color:#fff;font-weight:600;font-size:.95rem;cursor:pointer;transition:background .2s}
-  button:hover{background:#79a7ff}
-  table{width:100%;border-collapse:collapse;margin-top:1rem}
-  th,td{padding:.5rem;text-align:center}
-  th{background:#333}
-  tr:nth-child(even){background:#262626}
-  #topBar{display:flex;justify-content:center;gap:.75rem;flex-wrap:wrap}
-  #importFile{display:none}
-</style>
 </head>
 <body>
 
@@ -31,7 +15,7 @@
 <div id="topBar">
   <button id="exportBtn">Export Timers</button>
   <button id="importBtn">Import Timers</button>
-  <input id="importFile" type="file" accept=".json"/>
+  <input id="importFile" type="file" accept=".json" />
 </div>
 
 <div class="form-card">
@@ -62,179 +46,20 @@
     </div>
 
     <label>Base respawn interval (hours)</label>
-    <input type="number" id="interval"
-       min="0" max="99" step="0.5" value="11" required maxlength="4" />
+    <input type="number" id="interval" min="0" max="99" step="0.5" value="11" required maxlength="4" />
 
     <label>Random delay (hours)</label>
-    <input type="number" id="variance"
-       min="0" max="99" step="0.5" value="3"  required maxlength="4" />
+    <input type="number" id="variance" min="0" max="99" step="0.5" value="3" required maxlength="4" />
     <button type="submit">Add Timer</button>
   </form>
 </div>
 
 <div class="timers-card" id="timersCard" hidden>
   <h2>Active Timers</h2>
-  <table id="timersTable">
-    <thead>
-      <tr>
-        <th>Boss</th>
-        <th>Map</th>
-        <th>Window</th>
-        <th>Countdown</th>
-        <th>Remove</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <div class="boss-grid" id="bossGrid"></div>
 </div>
 
-<script>
-/* -------- boss → maps dictionary -------- */
-const bossMaps = {
-  Kiaron:["STONEGRAVE FIELD","CONQUEST OF UNITY","STONE PATH WILDERNESS","CONQUEST OF BELLIGERENCE","WIND PATH FLATLAND","CONQUEST OF VICTORY"],
-  Anggolt:["TRAINING GROUNDS OF UNITY","RALLY POINT OF UNITY","TRAINING GROUNDS OF BELLIGERENCE","RALLY POINT OF BELLIGERENCE","TRAINING GROUNDS OF VICTORY","RALLY POINT OF VICTORY"],
-  Grish:["ASSAULT POINT OF BELLIGERENCE","ROCKY MOUNTAIN CLIFF","ASSAULT POINT OF UNITY","STONEGRAVE SUMMIT","ASSAULT POINT OF VICTORY","CLOUD PATH WATCHTOWER"],
-  Inferno:["HIGH GROUNDS SUMMIT","SOURCE OF HEAVY COMBAT","HORIZON PEAKS","NEWBREEZE BORDER"]
-};
+<script src="timers.js"></script>
 
-/* -------- core data -------- */
-const form = document.getElementById('timerForm');
-const tableBody  = document.querySelector('#timersTable tbody');
-const timersCard = document.getElementById('timersCard');
-const mapSelect  = document.getElementById('mapName');
-let timers = [];
-
-/* -------- dynamic map select -------- */
-const bossSelect = document.getElementById('bossName');
-function populateMaps(boss){
-  const maps = bossMaps[boss] || [];
-  mapSelect.innerHTML = '<option value="" disabled selected>Select a map</option>' + maps.map(m=>`<option value="${m}">${m}</option>`).join('') + '<option value="addNewMap" style="color:#aaa;">+ Add new map...</option>';
-  mapSelect.disabled = maps.length===0;
-}
-
-bossSelect.addEventListener('change', () => populateMaps(bossSelect.value));
-
-/* -------- add‑new‑map logic -------- */
-mapSelect.addEventListener('change', () => {
-  if(mapSelect.value === 'addNewMap'){
-    let newMap = prompt('Enter new map:');
-    if(!newMap){ mapSelect.value=""; return; }
-    newMap = newMap.trim();
-    if(!newMap){ alert('Map name cannot be empty.'); mapSelect.value=""; return; }
-    const mapsArr = bossMaps[bossSelect.value] || [];
-    if(mapsArr.some(m=>m.toLowerCase() === newMap.toLowerCase())){
-      alert('Map already exists for this boss.');
-      mapSelect.value = mapsArr.find(m=>m.toLowerCase()===newMap.toLowerCase());
-      return;
-    }
-    mapsArr.push(newMap);
-    bossMaps[bossSelect.value] = mapsArr;
-    populateMaps(bossSelect.value);
-    mapSelect.value = newMap;
-  }
-});
-
-/* -------- restore saved -------- */
-window.onload = () => {
-  const saved = localStorage.getItem('timers');
-  if (saved){
-    timers = JSON.parse(saved);
-    timers.forEach(addTimerRow);
-    timersCard.hidden = !timers.length;
-    update();
-  }
-};
-
-/* -------- form submit -------- */
-form.addEventListener('submit', e => {
-  e.preventDefault();
-  const boss = bossSelect.value;
-  const map  = mapSelect.value;
-  if(!boss||!map) return alert('Select boss and map');
-  const baseHrs = +document.getElementById('interval').value;
-  const randHrs = +document.getElementById('variance').value;
-  const hh = +document.getElementById('killHour').value;
-  const mm = +document.getElementById('killMinute').value;
-  const ampm = document.getElementById('killAmPm').value;
-  let hours24 = hh % 12;
-  if (ampm === 'PM') hours24 += 12;
-  const killDate = new Date(); killDate.setHours(hours24, mm, 0, 0);
-  const minRespawn = new Date(killDate.getTime() + baseHrs*3600e3);
-  const maxRespawn = new Date(minRespawn.getTime() + randHrs*3600e3);
-  const timer = { id: Date.now(), boss, map, min: minRespawn.toISOString(), max: maxRespawn.toISOString() };
-  timers.push(timer);
-  addTimerRow(timer);
-  saveTimers();
-  timersCard.hidden = false;
-  form.reset();
-  bossSelect.value = "";
-  mapSelect.innerHTML = '<option value="" disabled selected>Select a map</option>';
-  mapSelect.disabled = true;
-});
-
-/* -------- table helpers -------- */
-function addTimerRow(t){
-  const row = tableBody.insertRow();
-  row.dataset.id = t.id;
-  row.insertCell().textContent = t.boss;
-  row.insertCell().textContent = t.map;
-  row.insertCell().textContent = `${fmtTime(new Date(t.min))} — ${fmtTime(new Date(t.max))}`;
-  const cdCell = row.insertCell();
-  const rmBtn = document.createElement('button'); rmBtn.textContent = '✕'; rmBtn.onclick = () => removeTimer(t.id);
-  row.insertCell().appendChild(rmBtn);
-  t.cell = cdCell; t.row = row;
-}
-function removeTimer(id){
-  const idx = timers.findIndex(t=>t.id===id);
-  if(idx>-1){ tableBody.removeChild(timers[idx].row); timers.splice(idx,1); saveTimers(); }
-  timersCard.hidden = !timers.length;
-}
-
-/* -------- storage / countdown update -------- */
-function saveTimers(){ localStorage.setItem('timers',JSON.stringify(timers)); }
-function update(){
-  const now = new Date();
-  timers.forEach(t=>{
-    const min=new Date(t.min), max=new Date(t.max), cell=t.cell;
-    if(now<min){ cell.style.color='#f9f9f9'; cell.innerHTML=`Earliest: ${fmtCD(min-now)}`; t.nextSpawnTime=min; }
-    else if(now<=max){ cell.style.color='red'; cell.innerHTML=`Guaranteed: ${fmtCD(max-now)} <small style='font-size:0.7em;margin-left:4px;color:#f44;'>SPAWN</small>`; t.nextSpawnTime=max; }
-    else{ cell.style.color='red'; cell.textContent='Spawn due'; t.nextSpawnTime=now; }
-  });
-  timers.sort((a,b)=>a.nextSpawnTime-b.nextSpawnTime);
-  timers.forEach(t=>tableBody.appendChild(t.row));
-}
-setInterval(update,1000);
-
-/* -------- formatting helpers -------- */
-const fmtTime=d=>{ let h=d.getHours()%12||12, m=d.getMinutes().toString().padStart(2,'0'); return `${h}:${m} ${d.getHours()>=12?'PM':'AM'}`; };
-function fmtCD(ms){
-  const s=Math.ceil(ms/1000);
-  const h=Math.floor(s/3600).toString().padStart(2,'0');
-  const m=Math.floor((s%3600)/60).toString().padStart(2,'0');
-  const sc=(s%60).toString().padStart(2,'0');
-  return `${h}:${m}:${sc}`;
-}
-
-/* -------- export / import -------- */
-const exportBtn=document.getElementById('exportBtn'), importBtn=document.getElementById('importBtn'), importFile=document.getElementById('importFile');
-exportBtn.onclick=()=>{
-  if(!timers.length) return alert('No timers to export.');
-  const blob=new Blob([JSON.stringify(timers,null,2)],{type:'application/json'});
-  const stamp=new Date().toISOString().replace(/[-:]/g,'').slice(0,15);
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`night-crows-timers-${stamp}.json`; a.click(); URL.revokeObjectURL(a.href);
-};
-importBtn.onclick=()=>importFile.click();
-importFile.onchange=()=>{
-  const file=importFile.files[0]; if(!file) return;
-  const reader=new FileReader(); reader.onload=e=>{
-    let incoming; try{incoming=JSON.parse(e.target.result);}catch{return alert('Invalid file.');}
-    if(!Array.isArray(incoming)) return alert('Invalid timer file.');
-    const mode=confirm('Click OK to MERGE with your timers.\nClick Cancel to REPLACE them.')?'merge':'replace';
-    if(mode==='replace'){ timers.forEach(t=>tableBody.removeChild(t.row)); timers=[]; }
-    incoming.forEach(t=>{ if(!timers.some(x=>x.id===t.id)){ timers.push(t); addTimerRow(t);} });
-    saveTimers(); timersCard.hidden=!timers.length; update(); alert(`Imported ${incoming.length} timer(s).`); importFile.value='';
-  }; reader.readAsText(file);
-};
-</script>
 </body>
 </html>
