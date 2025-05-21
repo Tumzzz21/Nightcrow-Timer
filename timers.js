@@ -90,22 +90,26 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    let h24 = hh % 12;
-    if (ampm === 'PM') h24 += 12;
+let h24 = hh % 12;
+if (ampm === 'PM') h24 += 12;
 
-    const kill = new Date();
-    kill.setHours(h24, mm, 0, 0);
+const kill = new Date();
+kill.setHours(h24, mm, 0, 0);
 
-    const min = new Date(kill.getTime() + baseHrs * 3600e3);
-    const max = new Date(min.getTime() + randHrs * 3600e3);
+// Save the exact kill time as ISO string
+const killTime = new Date(kill.getTime());
 
-    const timer = {
-      id: Date.now(),
-      boss,
-      map,
-      min: min.toISOString(),
-      max: max.toISOString()
-    };
+const min = new Date(kill.getTime() + baseHrs * 3600e3);
+const max = new Date(min.getTime() + randHrs * 3600e3);
+
+const timer = {
+  id: Date.now(),
+  boss,
+  map,
+  kill: killTime.toISOString(), // <--- store kill time
+  min: min.toISOString(),
+  max: max.toISOString()
+};
 
     timers.push(timer);
     saveTimers();
@@ -146,18 +150,19 @@ document.addEventListener('DOMContentLoaded', () => {
       head.textContent = boss;
       col.appendChild(head);
 
-      byBoss[boss].sort((a, b) => new Date(a.min) - new Date(b.min)).forEach(t => {
-        const card = document.createElement('div');
-        card.className = 'timer-card';
-        card.dataset.id = t.id;
-        card.innerHTML = `
-          <span><strong>${t.map}</strong></span>
-          <span id="w_${t.id}"></span>
-          <span id="c_${t.id}"></span>
-          <button style="margin-top:.25rem;align-self:center;border-radius:50%;width:1.8rem;height:1.8rem;font-size:1rem;" aria-label="Remove timer" onclick="removeTimer(${t.id})">✕</button>
-        `;
-        col.appendChild(card);
-      });
+byBoss[boss].sort((a, b) => new Date(a.min) - new Date(b.min)).forEach(t => {
+  const card = document.createElement('div');
+  card.className = 'timer-card';
+  card.dataset.id = t.id;
+  card.innerHTML = `
+    <span><strong>${t.map}</strong></span>
+    <span id="w_${t.id}"></span>
+    <span id="c_${t.id}"></span>
+    <span style="font-size:.9em;color:#b6b6b6;">Kill time: ${fmtTime(new Date(t.kill || t.min))}</span>
+    <button style="margin-top:.25rem;align-self:center;border-radius:50%;width:1.8rem;height:1.8rem;font-size:1rem;" aria-label="Remove timer" onclick="removeTimer(${t.id})">✕</button>
+  `;
+  col.appendChild(card);
+});
       bossGrid.appendChild(col);
     });
     update();
